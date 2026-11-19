@@ -1,0 +1,9 @@
+{
+  "mode": "jetson",
+  "host": "192.168.1.100",
+  "port": 18876,
+  "backend": "cuda_obb",
+  "package_id": "8dbdaaa4666be16ceae5a3943862f6c6b6f7797a99148184606f455362e33d3a",
+  "token_file": "/deployment/s100/filter_offload_token",
+  "timeout_s": 1.2
+}

@@ -1,0 +1,14 @@
+{
+  "bind": "192.168.1.100",
+  "port": 18769,
+  "allowed_clients": [
+    "192.168.1.101",
+    "192.168.1.100"
+  ],
+  "token_file": "config/jetson_gateway_token",
+  "connection_file": "/deployment/jetson/connection.json",
+  "known_hosts": "/deployment/jetson/known_hosts",
+  "remote_token_file": "/deployment/s100/gui_bus_token",
+  "upstream_port": 18769,
+  "timeout_s": 12.0
+}

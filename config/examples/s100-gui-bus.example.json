@@ -1,0 +1,12 @@
+{
+  "mode": "gui",
+  "port": 18769,
+  "upstream_url": "http://127.0.0.1:18768",
+  "upstream_token_file": "/home/sunrise/tianji_table_approach_dev/navigation_bus_refactor_v1_20261116/gui_runtime/config/gui_task_api_token",
+  "token_file": "runtime/gui_bus_token",
+  "journal": "runtime/gui_bus_audit.jsonl",
+  "pose_primary": "/dev/shm/tianji_navigation_v7_pose.json",
+  "pose_fallback": "/home/sunrise/tianji_table_approach_dev/navigation_s100_v7/runtime/current_pose.json",
+  "perception_status": "/home/sunrise/tianji_table_approach_dev/navigation_s100_v7/runtime/navigation_execution_status.json",
+  "allow_motion": false
+}

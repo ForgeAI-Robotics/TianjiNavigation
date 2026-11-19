@@ -1,0 +1,64 @@
+{
+  "global_planner": "continuous_pose_hybrid_astar",
+  "preferred_motion": "differential_forward_reverse_curves",
+  "short_translation_goal_distance_m": 1.5,
+  "short_translation_max_axial_m": 0.35,
+  "local_lateral_episode_max_m": 0.4,
+  "long_route_lateral_total_max_m": 1.5,
+  "lateral_distance_cost_multiplier": 3.0,
+  "lateral_activation_cost_m": 0.3,
+  "clutter_distance_m": 0.35,
+  "search_budget_s_per_stage": 12.0,
+  "maximum_nodes": 220000,
+  "max_vx_mps": 0.2,
+  "max_vy_mps": 0.1,
+  "max_reverse_mps": 0.1,
+  "max_wz_radps": 0.2,
+  "execution_enabled": false,
+  "short_rectilinear_enabled": true,
+  "short_rectilinear_max_length_m": 2.0,
+  "tracking_lookahead_m": 0.15,
+  "fine_goal": {
+    "enabled": true,
+    "entry_distance_m": 0.12,
+    "position_tolerance_m": 0.05,
+    "heading_tolerance_deg": 1.0,
+    "settle_s": 1.0,
+    "minimum_samples": 5,
+    "translation_speed_mps": 0.015,
+    "rotation_speed_radps": 0.025,
+    "position_gain": 0.5,
+    "heading_gain": 0.6,
+    "strategy": "pulse_observe",
+    "observe_s": 0.6,
+    "pulse_distance_m": 0.008,
+    "pulse_heading_deg": 0.5,
+    "pulse_timeout_s": 2.0,
+    "no_progress_limit": 3,
+    "maximum_pulses": 40,
+    "position_settle_margin_m": 0.0
+  },
+  "tracking_stability": {
+    "enabled": true,
+    "lateral_deadband_m": 0.02,
+    "heading_deadband_deg": 2.0
+  },
+  "navigation_test_limits": {
+    "translation_cap_mps": 0.1,
+    "unobserved_travel_budget_m": 0.145,
+    "lateral_cap_mps": 0.1,
+    "rotating_translation_cap_mps": 0.04,
+    "rotating_lateral_cap_mps": 0.04,
+    "rotating_unobserved_travel_budget_m": 0.05
+  },
+  "short_diagonal_enabled": true,
+  "scene_policy": {
+    "global_obstacles": "static_map_only",
+    "live_obstacle_action": "wait_then_resume",
+    "dynamic_obstacle_replan": false
+  },
+  "localization_anchor_tolerance": {
+    "distance_m": 0.04,
+    "heading_deg": 2.0
+  }
+}

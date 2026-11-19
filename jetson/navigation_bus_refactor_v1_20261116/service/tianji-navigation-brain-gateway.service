@@ -1,0 +1,18 @@
+[Unit]
+Description=Jetson navigation API gateway to S100 (no local motion control)
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/nvidia/tianji_table_approach_dev/navigation_bus_refactor_v1_20261116
+ExecStart=/usr/bin/python3 -m navbus.jetson_gateway --config config/jetson_gateway.json
+Restart=on-failure
+RestartSec=2
+NoNewPrivileges=true
+UMask=0077
+StandardOutput=append:/home/nvidia/tianji_table_approach_dev/navigation_bus_refactor_v1_20261116/runtime/jetson_gateway.log
+StandardError=inherit
+Environment=PYTHONDONTWRITEBYTECODE=1
+
+[Install]
+WantedBy=default.target

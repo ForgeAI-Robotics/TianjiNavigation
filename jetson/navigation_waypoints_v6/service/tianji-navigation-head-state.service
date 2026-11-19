@@ -1,0 +1,13 @@
+[Unit]
+Description=Tianji read-only head feedback independent of navigation GUI
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 %h/tianji_table_approach_dev/navigation_waypoints_v6/modules/navigation_head_state_service.py
+Restart=on-failure
+RestartSec=2
+TimeoutStopSec=8
+
+[Install]
+WantedBy=default.target

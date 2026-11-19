@@ -1,0 +1,14 @@
+[Unit]
+Description=Tianji S100 navigation task API (read-only startup default)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/tianji_table_approach_dev/navigation_s100_v7
+ExecStart=%h/tianji_table_approach_dev/navigation_s100_v7/api.sh
+Restart=on-failure
+RestartSec=2
+TimeoutStopSec=35
+
+[Install]
+WantedBy=default.target

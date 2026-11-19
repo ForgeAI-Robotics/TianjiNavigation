@@ -1,0 +1,8 @@
+{
+  "bind": "192.168.1.100",
+  "port": 18876,
+  "allowed_clients": [
+    "192.168.1.10"
+  ],
+  "token_file": "/deployment/jetson/filter_token"
+}

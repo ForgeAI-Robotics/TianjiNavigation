@@ -1,0 +1,981 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Tianji / S100 Navigation Task API",
+    "version": "1.1.0",
+    "description": "S100 owns execution. SUCCEEDED requires actual ARRIVED completion within 5cm / 1degree. PLAN_READY and TEST_COMPLETE are non-motion outcomes."
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:8765"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/v1/navigation/tasks": {
+      "post": {
+        "summary": "Submit autonomous navigation to a numbered waypoint. Motion requires server startup configuration; requests cannot override guards.",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "maxLength": 128
+            },
+            "description": "Reuse for retries of the same request."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NavigateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Task"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Task"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "List recent task records",
+        "responses": {
+          "200": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/navigation/plans": {
+      "post": {
+        "summary": "Read-only planning; PLAN_READY never means the robot arrived.",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "maxLength": 128
+            },
+            "description": "Reuse for retries of the same request."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Task"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Task"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/navigation/tests": {
+      "post": {
+        "summary": "Isolated no-motion full-chain diagnostic; never enables physical output.",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "maxLength": 128
+            },
+            "description": "Reuse for retries of the same request."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Task"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Task"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/navigation/tasks/{task_id}": {
+      "get": {
+        "summary": "Read task state and latest navigator telemetry",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Task"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/navigation/tasks/{task_id}/cancel": {
+      "post": {
+        "summary": "Cancel and wait for navigator shutdown through task state",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Task"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/navigation/tasks/{task_id}/events": {
+      "get": {
+        "summary": "Long poll events; truncated=true means resync the task snapshot",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "wait",
+            "in": "query",
+            "schema": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/navigation/tasks/{task_id}/plan": {
+      "get": {
+        "summary": "Fetch checked path artifact",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/capabilities": {
+      "get": {
+        "summary": "Read service capabilities and motion mode",
+        "responses": {
+          "200": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/readiness": {
+      "get": {
+        "summary": "Read existing navigation gate state; does not authorize motion",
+        "responses": {
+          "200": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/waypoints": {
+      "get": {
+        "summary": "Read numbered waypoints, optional scene query",
+        "responses": {
+          "200": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/openapi.json": {
+      "get": {
+        "summary": "OpenAPI document",
+        "responses": {
+          "200": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/healthz": {
+      "get": {
+        "summary": "Process health only",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/navigation/stop": {
+      "post": {
+        "summary": "Cancel the currently active API-owned task",
+        "responses": {
+          "200": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Compatibility health, does not grant motion",
+        "responses": {
+          "200": {
+            "description": "Compatibility JSON response"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Command not found"
+          }
+        }
+      }
+    },
+    "/v1/status": {
+      "get": {
+        "summary": "Current preflight status, blockers and active external command",
+        "responses": {
+          "200": {
+            "description": "Compatibility JSON response"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Command not found"
+          }
+        }
+      }
+    },
+    "/v1/world": {
+      "get": {
+        "summary": "Fixed map frame binding and world metadata",
+        "responses": {
+          "200": {
+            "description": "Compatibility JSON response"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Command not found"
+          }
+        }
+      }
+    },
+    "/total_scene_graph_latest.json": {
+      "get": {
+        "summary": "Real numbered waypoint references and independent coordinate goal capability",
+        "responses": {
+          "200": {
+            "description": "Compatibility JSON response"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Command not found"
+          }
+        }
+      }
+    },
+    "/v1/commands/{command_id}": {
+      "get": {
+        "summary": "Query original persisted command without resubmission",
+        "responses": {
+          "200": {
+            "description": "Compatibility JSON response"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Command not found"
+          }
+        },
+        "parameters": [
+          {
+            "name": "command_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "in": "path"
+          }
+        ]
+      }
+    },
+    "/v1/navigation/goals": {
+      "post": {
+        "summary": "Submit independent map coordinate goal; same broker/journal as numbered tasks",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BrainNavigationGoal"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Persisted and accepted, not arrival"
+          },
+          "200": {
+            "description": "Existing identical command"
+          },
+          "409": {
+            "description": "Safety not ready, busy or command conflict"
+          },
+          "422": {
+            "description": "Invalid request or unsupported motion mode"
+          }
+        }
+      }
+    },
+    "/v1/navigation/cancel": {
+      "post": {
+        "summary": "Cancel matching task_id/command_id only",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "task_id",
+                  "command_id"
+                ],
+                "properties": {
+                  "task_id": {
+                    "type": "string"
+                  },
+                  "command_id": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Cancellation requested; query original command for terminal/stop proof"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "NavigateRequest": {
+        "type": "object",
+        "required": [
+          "goal"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "goal": {
+            "type": "integer",
+            "enum": [
+              1,
+              2,
+              3
+            ]
+          },
+          "scene": {
+            "type": "string",
+            "enum": [
+              "office",
+              "outside"
+            ],
+            "default": "office"
+          },
+          "client_id": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "translation_cap_mps": {
+            "type": "number",
+            "minimum": 0.005,
+            "maximum": 0.1,
+            "default": 0.1
+          },
+          "timeout_s": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 3600,
+            "default": 0
+          }
+        }
+      },
+      "PlanRequest": {
+        "type": "object",
+        "required": [
+          "goal"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "goal": {
+            "type": "integer",
+            "enum": [
+              1,
+              2,
+              3
+            ]
+          },
+          "scene": {
+            "type": "string",
+            "enum": [
+              "office",
+              "outside"
+            ],
+            "default": "office"
+          },
+          "client_id": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "ignore_head_camera": {
+                "type": "boolean",
+                "default": true
+              },
+              "open_grippers": {
+                "type": "boolean",
+                "default": false
+              },
+              "use_saved_arms": {
+                "type": "boolean",
+                "default": false
+              }
+            }
+          }
+        }
+      },
+      "TestRequest": {
+        "type": "object",
+        "required": [
+          "goal"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "goal": {
+            "type": "integer",
+            "enum": [
+              1,
+              2,
+              3
+            ]
+          },
+          "scene": {
+            "type": "string",
+            "enum": [
+              "office",
+              "outside"
+            ],
+            "default": "office"
+          },
+          "client_id": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "translation_cap_mps": {
+            "type": "number",
+            "minimum": 0.005,
+            "maximum": 0.1,
+            "default": 0.1
+          },
+          "timeout_s": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 3600,
+            "default": 0
+          },
+          "duration_s": {
+            "type": "number",
+            "minimum": 5,
+            "maximum": 120,
+            "default": 20
+          }
+        }
+      },
+      "Task": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "state",
+          "request",
+          "revision"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "navigate",
+              "plan",
+              "test"
+            ]
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "ACCEPTED",
+              "STARTING",
+              "PLANNING",
+              "WAITING",
+              "RUNNING",
+              "CANCELING",
+              "SUCCEEDED",
+              "FAILED",
+              "CANCELED",
+              "INTERRUPTED",
+              "PLAN_READY",
+              "TEST_COMPLETE"
+            ]
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "request": {
+            "type": "object"
+          },
+          "target": {
+            "type": "object"
+          },
+          "navigator_status": {
+            "type": "object",
+            "nullable": true
+          },
+          "result": {
+            "type": "object",
+            "nullable": true
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "BrainNavigationGoal": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "contract_version",
+          "task_id",
+          "command_id",
+          "target_id",
+          "route_phase",
+          "leg_index",
+          "frame_id",
+          "goal_xyt",
+          "motion_mode",
+          "require_final_orientation"
+        ],
+        "properties": {
+          "contract_version": {
+            "type": "string",
+            "enum": [
+              "fq/reception-lan/v1"
+            ]
+          },
+          "task_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.:-]{1,160}$"
+          },
+          "command_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.:-]{1,160}$"
+          },
+          "target_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "route_phase": {
+            "type": "string"
+          },
+          "leg_index": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "frame_id": {
+            "type": "string",
+            "enum": [
+              "map"
+            ]
+          },
+          "goal_xyt": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "motion_mode": {
+            "type": "string",
+            "enum": [
+              "forward_path",
+              "lateral_path_aligned"
+            ],
+            "description": "Backend currently supports forward_path; lateral_path_aligned is explicitly rejected with INVALID_MOTION_MODE."
+          },
+          "require_final_orientation": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          }
+        }
+      }
+    }
+  }
+}

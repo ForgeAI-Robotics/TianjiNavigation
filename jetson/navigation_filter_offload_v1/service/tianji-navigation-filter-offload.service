@@ -1,0 +1,18 @@
+[Unit]
+Description=Jetson navigation point filter (no motion control)
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/nvidia/tianji_table_approach_dev/navigation_filter_offload_v1
+ExecStart=/usr/bin/python3 /home/nvidia/tianji_table_approach_dev/navigation_filter_offload_v1/modules/jetson_filter_service.py
+Environment=OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1
+Restart=on-failure
+RestartSec=2
+KillMode=control-group
+TimeoutStopSec=5
+NoNewPrivileges=true
+UMask=0077
+
+[Install]
+WantedBy=default.target

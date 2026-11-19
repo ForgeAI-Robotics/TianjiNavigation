@@ -1,0 +1,168 @@
+对外场景范围（2026-11-16）
+Jetson网关仅公布office及office_waypoint_1/2/3。其他场景的查询、任务创建、历史任务及事件访问均不通过公开网关；GUI私有调试配置保留。
+
+Jetson统一对外网关（2026-11-16，当前入口）
+
+大脑只访问：http://192.168.31.150:18769
+完整链路：大脑 -> Jetson HTTP网关 -> SSH -> S100 127.0.0.1:18769总线 -> 18768同一候选任务代理 -> 原导航执行/反馈。
+GUI调试支路继续使用现有S100总线适配器；两者共用S100任务账本，Jetson网关不缓存任务终态、不另存任务账本、不控制电机或自行重试动作。
+请求与状态正文、command_id/task_id、幂等键、成功/停车证据由上游透传；受理后链路不确定时保留连接中断，由大脑只查询原命令。
+网关关闭或网络断开不等于S100任务已取消/底盘已停。取消必须调用原身份的取消接口，之后查询原停止证据。
+
+网关源码：navbus/jetson_gateway.py
+Jetson配置：config/jetson_gateway.json
+Jetson私有凭据：config/jetson_gateway_token（0600，仅路径公开，不复制到交接正文）
+S100后端凭据由网关使用既有已校验主机密钥的SSH连接读取，不发送给大脑、不写入网关日志。
+绑定Jetson当前Wi-Fi地址192.168.31.150，仅允许已配置大脑192.168.31.144和本机自检来源；没有绑定0.0.0.0、修改防火墙或开放S100端口。
+Jetson地址若变化，需明确更新网关bind及大脑URL；不会自动切到全网卡。
+
+服务：tianji-navigation-brain-gateway.service（Jetson用户服务，已运行，未启用开机自启）
+启动：systemctl --user start tianji-navigation-brain-gateway.service
+状态：systemctl --user status tianji-navigation-brain-gateway.service
+日志：runtime/jetson_gateway.log（仅请求方法、路由摘要、状态、耗时，不含令牌和请求正文）
+无需GUI常驻。已有S100候选服务仍使用其原启动器维护，网关不会擅自启用运动或自动提交目标。
+
+验证：82项本地测试通过；大脑原源码经隔离网关的模拟成功/停车未知/丢回包/取消测试通过，明确physical_execution=false。
+大脑192.168.31.144以原TianjiNavigationSkill直接访问Jetson局域网URL，GET健康/地图/状态通过，没有使用临时HTTP转发到S100。
+5次状态查询端到端耗时约45~64ms，仅小样本，不代表所有负载下的性能保证。
+对方关键源码与S100任务账本前后哈希不变。未修改对方文件、未打开GUI、未提交真实导航任务或发送运动指令。
+大脑常驻业务URL/凭据配置和技能注册仍由其维护者处理；本次遵守对方文件只读约束。真实行驶与停止验收尚未执行。
+报告runtime/brain_alignment_20261116/{direct_jetson_gateway_readonly.json,offline_actual_brain_gateway.json,jetson_gateway_release.json}。
+
+--------------------------------------------------------------------
+
+当前生效：大脑兼容接口与模块化导航共用执行链（2026-11-16）
+
+大脑对外地址现为Jetson的http://192.168.31.150:18769；Jetson通过受控SSH通道访问S100内部127.0.0.1:18769。本次没有修改大脑端常驻配置。
+大脑使用Jetson本项目config/jetson_gateway_token；网关通过SSH单独读取S100的runtime/gui_bus_token，不能将两者混用。大脑客户端支持TIANJI_NAV_TOKEN或TIANJI_NAV_TOKEN_FILE（后者优先、要求私有普通文件）。凭据内容不写入文档。
+大脑源码无需修改；原TianjiNavigationSkill保持原fq/reception-lan/v1合同。对方业务流程仍未注册该原子技能，不把接口验证称为业务接管完成。
+
+真实数据流：
+大脑TianjiNavigationSkill（对方文件保持只读）
+ -> Jetson 192.168.31.150:18769独立鉴权网关
+ -> SSH直连S100内部127.0.0.1:18769 HTTP兼容入口
+ -> Bus -> brain_navigation模块 -> LegacyGateway的受限兼容端口
+ -> 18768候选TaskManager（与GUI编号任务共用唯一任务账本）
+ -> gui_runtime/execute.sh -> gui_runtime/modules/onboard_navigation.py
+ -> 当前定位/规划/拐点控制/近桌前后半速/实时守卫/控制及停车证据。
+Jetson点云滤除服务仍沿用当前版本；S100原生产8765和原厂SDK/导航不改、不重启。
+
+兼容HTTP入口（除原healthz外均需Bearer鉴权）：
+GET /health
+GET /v1/status
+GET /v1/world
+GET /total_scene_graph_latest.json
+POST /v1/navigation/goals      大脑完整坐标合同，保留task_id、command_id、goal_xyt等字段
+GET /v1/commands/{command_id}
+POST /v1/navigation/cancel     按原task_id+command_id取消
+原GUI编号调用与POST /v1/bus/call仍保留。/v1/navigation/goals检测contract_version、command_id或goal_xyt时走大脑合同；不会把任意坐标替换成最近编号点。
+总线模块brain_navigation暴露health/status/world/graph/submit/get/cancel，直接bus/call返回result.http_status和result.body；上述兼容HTTP直接返回原合同正文及原HTTP状态码。
+
+所有命令幂等、冲突、任务存储、事件、取消和成功/停车证据均由同一个上游TaskManager负责。
+同command_id同请求仅执行一次；同command_id不同请求返回409；旧命令取消不会停掉新命令。
+提交受理不等于到位，取消受理不等于物理停车。实际成功仍要求原到位和停车证据，不降低原5cm/1度验收。
+若上游POST回包丢失，或受理后总线结果审计失败，兼容入口保留连接中断的不确定性，让现有大脑客户端只查询原command_id；不会伪造明确HTTP失败诱导新发任务。
+取消意图/结果审计故障不能阻止原取消请求下发。
+
+配置：
+候选config/brain_compat.json链接到S100生产config/brain_compat.json；修正原部署误写brain_navigation_compat.json。
+代理默认--scene office，并在导入旧读取器前设置该进程TIANJI_NAV_SCENE；候选readiness按manager.registry的同一场景读取地图。
+办公室外部map绑定固定session_base_start，地图SHA256为4393e9799b895884d6a078396cf9f04f3ae3d4249047a0443587b097b40af384；点位1/2/3来自同一办公室配置。
+其他场景的外部坐标调用仍需匹配明确的地图绑定，不自动混用办公室和外侧地图。
+forward_path受支持；lateral_path_aligned继续明确拒绝，未承诺严格锁定朝向的横移合同。
+相机/ShapeMask已有测试放行配置保持原值，并如实标注FORCED_CLEAR_TEST，不伪称实测净空。
+空闲时LIVE_ADMISSION_NOT_CONFIRMED表示当前没有活动任务的实时路径准入证明；motion_enabled表示允许受理能力，不代表当前运动安全已通过。
+
+客户端接入步骤（由对方维护者配置，未改对方文件）：
+1. 将TianjiNavigationSkill(base_url)或scripts/tianji_navigation.py --base-url设为http://192.168.31.150:18769。大脑不需要连接S100。
+2. 通过受控配置给大脑提供Jetson的config/jetson_gateway_token，使用TIANJI_NAV_TOKEN或TIANJI_NAV_TOKEN_FILE；不是S100的gui_bus_token。
+3. 先调用check()核对地图/合同；真实派发需要调用方显式allow_motion=True，并保存原任务/命令身份。
+4. 业务Planner/Runtime注册与实际行驶/停车验收另行完成。不要把本次模拟PASS当成真机到位。
+本侧服务使用原start_gui_services.sh按需启动，不依赖GUI常驻，不新增开机自动任务。
+
+验证证据：
+本地主测试72项通过；S100主测试72项通过（1项Jetson专用跳过）。
+原样大脑源码通过隔离模拟：成功、停车未知拒绝、提交回包丢失后只查询原命令、取消身份；每条导航命令执行次数为1。
+实际部署后，大脑原客户端对18769和18768均通过GET元数据检查；生产8765继续只读。
+部署时两把原导航锁保护，确认无活动候选任务；任务账本前后哈希一致。只重载两个既有候选服务。
+第一次重载使用systemctl start遇到--collect临时单元已卸载，已回滚并用原start_gui_services.sh重建；后续部署按此方式完成，无任务自动提交。
+对方关键源码前后SHA一致；原生产103个S100模块和原厂导航脚本保持原哈希。本次未打开GUI、未提交实机任务、未发送运动命令。
+报告：runtime/brain_alignment_20261116/{live_brain_metadata_check.json,offline_actual_brain_bus.json,deployment.json,compatibility_release.json}。
+
+以下保留早期接口与隔离开发说明，发生冲突时以上述当前生效说明为准。
+--------------------------------------------------------------------
+
+天机 + 灵猴导航模块化接口（隔离重构版）
+
+Jetson项目：/home/nvidia/tianji_table_approach_dev/navigation_bus_refactor_v1_20261116
+S100项目：/home/sunrise/tianji_table_approach_dev/navigation_bus_refactor_v1_20261116
+生产项目：S100的navigation_s100_v7；Jetson调试GUI为navigation_waypoints_v6，均未切换。
+
+数据流
+大脑或调试GUI -> navbus.client.BusClient -> HTTP -> Bus -> 业务模块 -> 注入的Port -> 旧任务代理
+旧任务代理是唯一任务账本：任务ID、幂等键、事件游标、取消、停止证据继续沿用同一份。
+导航内核 -> route / collision / admission 三阶段 -> 原算法/模型/硬件适配层。
+OperatorChannel、StatusPublisher、Resources、MotionLimits各自拥有会话状态，由执行入口组装。
+S100负责现有的任务与底盘控制；Jetson现有点云卸载和机械臂反馈链路保留。
+本轮未移动高频点云链路，也未接触第三台设备大脑的只读文件。
+
+启动与验证
+./verify_all.sh                     # 自动运行并退出自己的仿真服务
+./verify_all.sh --shadow            # 仅S100；附加读取生产任务/点位，不创建生产任务
+手动协议调试：终端1 ./run_fixture.sh；终端2 ./run_bus.sh
+生产只读观察：./run_bus.sh config/shadow_s100.json
+手动启动的服务用Ctrl+C结束；未添加systemd/自启动。
+
+监听与权限
+127.0.0.1:18765：隔离旧代理仿真；18766：仿真总线；18767：生产只读总线。
+原生产8765端口不变。总线只绑定loopback；远程大脑接入使用SSH端口转发。
+鉴权：Authorization: Bearer <本机runtime/bus_token或shadow_token的内容>
+不要把token或设备口令写进交接文件。token文件0600，本文件不包含其内容。
+
+HTTP
+GET /healthz                           健康/能力（无任务状态）
+GET /v1/modules                        已注册模块（需鉴权）
+POST /v1/bus/call                       标准调用（需鉴权）
+请求头Idempotency-Key：对于任务创建，重试必须沿用同一键。
+请求体：{"module":"navigation","operation":"plan","arguments":{"goal":3,"scene":"office"}}
+成功响应：{"request_id":...,"result":...}，业务任务在result中；请以实际返回字段为准。
+失败响应：{"error":{"code":"...","message":"..."}}，HTTP状态>=400。
+便利入口POST /v1/navigation/goals：{"mode":"plan","goal":3,"scene":"office"}。
+
+业务模块
+navigation.plan(goal,scene,options) -> 原任务对象，id为上游task_id
+navigation.navigate(goal,scene,translation_cap_mps,timeout_s) -> 接口已定义，当前隔离策略返回MOTION_DISABLED
+navigation.test(goal,scene,duration_s,translation_cap_mps) -> fixture下为协议仿真
+navigation.get(task_id) -> 原任务状态
+navigation.cancel(task_id) -> 取消同一任务，停止请求不因总线审计失败而被吞掉
+navigation.events(task_id,after,wait) -> 事件长轮询，wait范围0~10秒
+world.waypoints(scene) -> 当前场景点位
+readiness.get() -> 当前代理门控元数据
+localization.snapshot() -> 源定位文档及其时间戳，不刷新过期观测
+perception.status() -> 净空/滤除状态元数据，不把大点云搬上任务总线
+对外scene仅office；目标为1/2/3；速度使用m/s，默认/最大0.1，最低0.005。
+不通过任务API强制修改雷达/ShapeMask/夹爪/双臂配置，原有选项由适配层验证。
+
+Python客户端（在项目目录）
+from pathlib import Path
+from navbus.client import BusClient
+client = BusClient('http://127.0.0.1:18766', Path('runtime/bus_token').read_text().strip())
+job = client.plan(3, request_id='brain-plan-3-example-001')
+done = client.wait(job['id'], timeout=30)
+# client.cancel(job['id'])
+# client.navigate(3, translation_cap_mps=0.1)  # 当前配置会拒绝物理运动
+
+仿真状态PLAN_READY不代表已检查真实环境几何。shadow拒绝一切上游POST，包括plan/test/cancel。
+wait超时仅结束等待，不自动取消任务；使用原task_id继续查询，禁止为超时重新造任务ID。
+模块可被其他进程/嵌入式入口复用；只有app.py组装具体模块和适配器，业务模块只依赖contracts。
+未来接入真实执行，需要对生产切换、鉴权和实机回归单独完成发布；不要删除隔离标记绕过保护。
+
+
+GUI候选运行接口补充（2026-11-16）
+本轮明确请求接入GUI后，新增gui模式：总线18769 -> 专用候选代理18768，允许用户点击后的navigate。
+原有fixture18766与shadow18767继续拒绝物理运动；旧生产8765保持原状。
+GUI中的“模块化总线（重构版测试）”使用新接口，token为本机runtime/gui_bus_token；不能复用旧代理token。
+专用代理账本：gui_runtime/runtime/task_api/tasks；真实执行源码：gui_runtime/modules/onboard_navigation.py。
+按需启动：./start_gui_services.sh；GUI也会在bus后端操作前幂等调用它。不会自动创建任务或发送速度。
+所有原来的点位/速度/停止接口语义保留；仅在专用gui配置中明确allow_motion=true。
+本次GUI和服务检查没有主动提交实机任务，现场导航验证由用户点击启动完成。

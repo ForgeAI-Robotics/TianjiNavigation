@@ -1,0 +1,4 @@
+{
+  "url": "http://192.168.31.144:15001",
+  "token_file": "/deployment/jetson/brain_monitor_token"
+}

@@ -1,0 +1,5 @@
+{
+  "ignore_head_camera": true,
+  "open_grippers": true,
+  "use_saved_arms": true
+}
